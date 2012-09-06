@@ -65,7 +65,19 @@ public class KerberosAuthenticator implements Authenticator {
     public static String NEGOTIATE = "Negotiate";
 
     private static final String AUTH_HTTP_METHOD = "OPTIONS";
-
+    
+    /**
+     * keytab file is used for authentication
+     */
+    private String keytab;
+    
+    /**
+     * kerberos user principal is used for authentication
+     */
+    private String userPrincipal;
+    
+    private boolean useKeytab = false;
+    
     /*
      * Defines the Kerberos configuration that will be used to obtain the kerberos principal from the
      * Kerberos cache.
@@ -93,8 +105,6 @@ public class KerberosAuthenticator implements Authenticator {
 
         static {
             USER_KERBEROS_OPTIONS.put("doNotPrompt", "true");
-            USER_KERBEROS_OPTIONS.put("useTicketCache", "true");
-            USER_KERBEROS_OPTIONS.put("renewTGT", "true");
             String ticketCache = System.getenv("KRB5CCNAME");
             if (ticketCache != null) {
                 USER_KERBEROS_OPTIONS.put("ticketCache", ticketCache);
@@ -112,6 +122,10 @@ public class KerberosAuthenticator implements Authenticator {
         @Override
         public AppConfigurationEntry[] getAppConfigurationEntry(String appName) {
             return USER_KERBEROS_CONF;
+        }
+        
+        public void addUserKerberosOption(String name, String value) {
+            USER_KERBEROS_OPTIONS.put(name, value);
         }
     }
 
@@ -165,6 +179,19 @@ public class KerberosAuthenticator implements Authenticator {
         return new PseudoAuthenticator();
     }
 
+    public void setKeytab(String keytab)
+    {
+        this.keytab = keytab;
+        
+        if (keytab != null)
+            useKeytab = true;
+    }
+
+    public void setUserPrincipal(String userPrincipal)
+    {
+        this.userPrincipal = userPrincipal;
+    }
+    
     /*
      * Indicates if the response is starting a SPNEGO negotiation.
      */
@@ -191,7 +218,24 @@ public class KerberosAuthenticator implements Authenticator {
             Subject subject = Subject.getSubject(context);
             if (subject == null) {
                 subject = new Subject();
-                LoginContext login = new LoginContext("", subject);
+                LoginContext login = null;
+                KerberosConfiguration krbConfiguration = new KerberosConfiguration();
+                
+                // use keytab
+                if (useKeytab)
+                {                   
+                    krbConfiguration.addUserKerberosOption("useKeyTab", "true");
+                    krbConfiguration.addUserKerberosOption("storeKey", "true");                    
+                    krbConfiguration.addUserKerberosOption("principal", userPrincipal);
+                    krbConfiguration.addUserKerberosOption("keyTab", keytab);
+                    login = new LoginContext(userPrincipal, subject, null, krbConfiguration);
+                }
+                else // use ticket cache
+                {
+                    krbConfiguration.addUserKerberosOption("useTicketCache", "true");
+                    krbConfiguration.addUserKerberosOption("renewTGT", "true");
+                    login = new LoginContext("", subject, null, krbConfiguration);
+                }
                 login.login();
             }
             Subject.doAs(subject, new PrivilegedExceptionAction<Void>() {
@@ -262,7 +306,7 @@ public class KerberosAuthenticator implements Authenticator {
      */
     private byte[] readToken() throws IOException, AuthenticationException {
         int status = conn.getResponseCode();
-        if (status == HttpURLConnection.HTTP_OK || status == HttpURLConnection.HTTP_UNAUTHORIZED) {
+        if (status == HttpURLConnection.HTTP_OK || status == HttpURLConnection.HTTP_UNAUTHORIZED || status == HttpURLConnection.HTTP_BAD_REQUEST) {
             String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
             if (authHeader == null || !authHeader.trim().startsWith(NEGOTIATE)) {
                 throw new AuthenticationException("Invalid SPNEGO sequence, '" + WWW_AUTHENTICATE +
