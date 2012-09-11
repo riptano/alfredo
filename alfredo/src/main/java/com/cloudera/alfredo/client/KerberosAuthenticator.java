@@ -282,10 +282,10 @@ public class KerberosAuthenticator implements Authenticator {
             });
         }
         catch (PrivilegedActionException ex) {
-            throw new AuthenticationException(ex.getException());
+            throw new AuthenticationException(ex.getException(), AuthenticationException.AuthenticationExceptionCode.PRIVILEGED_ACTION_EXCEPTION);
         }
         catch (LoginException ex) {
-            throw new AuthenticationException(ex);
+            throw new AuthenticationException(ex, AuthenticationException.AuthenticationExceptionCode.LOGIN_EXCEPTION);
         }
         AuthenticatedURL.extractToken(conn, token);
     }
@@ -310,12 +310,14 @@ public class KerberosAuthenticator implements Authenticator {
             String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
             if (authHeader == null || !authHeader.trim().startsWith(NEGOTIATE)) {
                 throw new AuthenticationException("Invalid SPNEGO sequence, '" + WWW_AUTHENTICATE +
-                                                  "' header incorrect: " + authHeader);
+                                                  "' header incorrect: " + authHeader, 
+                                                  AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
             }
             String negotiation = authHeader.trim().substring((NEGOTIATE + " ").length()).trim();
             return base64.decode(negotiation);
         }
-        throw new AuthenticationException("Invalid SPNEGO sequence, status code: " + status);
+        throw new AuthenticationException("Invalid SPNEGO sequence, status code: " + status, 
+                AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
     }
 
 }

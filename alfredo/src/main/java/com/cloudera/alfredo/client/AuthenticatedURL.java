@@ -286,7 +286,7 @@ public class AuthenticatedURL {
         }
         else {
             throw new AuthenticationException("Authentication failed, status: " + conn.getResponseCode() +
-                                              ", message: " + conn.getResponseMessage());
+                                              ", message: " + conn.getResponseMessage(), AuthenticationException.AuthenticationExceptionCode.AUTHENTICATION_FAILED_HTTP_RESP_CODE);
         }
     }
 

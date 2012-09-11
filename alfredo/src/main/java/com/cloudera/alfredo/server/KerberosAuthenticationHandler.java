@@ -302,7 +302,8 @@ public class KerberosAuthenticationHandler implements AuthenticationHandler {
                     throw (IOException) ex.getException();
                 }
                 else {
-                    throw new AuthenticationException(ex.getException());
+                    throw new AuthenticationException(ex.getException(),
+                            AuthenticationException.AuthenticationExceptionCode.PRIVILEGED_ACTION_EXCEPTION);
                 }
             }
         }

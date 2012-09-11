@@ -305,7 +305,7 @@ public class AuthenticationFilter implements Filter {
                         tokenStr = signer.verifyAndExtract(tokenStr);
                     }
                     catch (SignerException ex) {
-                        throw new AuthenticationException(ex);
+                        throw new AuthenticationException(ex, AuthenticationException.AuthenticationExceptionCode.TOKEN_SIGNER_EXCEPTION);
                     }
                     break;
                 }
@@ -314,10 +314,10 @@ public class AuthenticationFilter implements Filter {
         if (tokenStr != null) {
             token = AuthenticationToken.parse(tokenStr);
             if (!token.getType().equals(authHandler.getType())) {
-                throw new AuthenticationException("Invalid AuthenticationToken type");
+                throw new AuthenticationException("Invalid AuthenticationToken type", AuthenticationException.AuthenticationExceptionCode.INVALID_TYPE);
             }
             if (token.isExpired()) {
-                throw new AuthenticationException("AuthenticationToken expired");
+                throw new AuthenticationException("AuthenticationToken expired", AuthenticationException.AuthenticationExceptionCode.TOKEN_EXPIRED);
             }
         }
         return token;
