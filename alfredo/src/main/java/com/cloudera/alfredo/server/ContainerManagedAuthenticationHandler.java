@@ -72,7 +72,8 @@ public class ContainerManagedAuthenticationHandler implements AuthenticationHand
             throws IOException, AuthenticationException {
       Principal principal = request.getUserPrincipal();
       if (principal == null) {
-        throw new AuthenticationException("Authentication required.");
+        throw new AuthenticationException("Authentication required", 
+                AuthenticationException.AuthenticationExceptionCode.AUTHENTICATION_FAILED_HTTP_RESP_CODE);
       }
       String userName = principal.getName();
 
