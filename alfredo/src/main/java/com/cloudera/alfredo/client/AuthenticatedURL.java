@@ -21,9 +21,12 @@ import com.cloudera.alfredo.server.AuthenticationFilter;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import javax.net.ssl.HttpsURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * The <code>AuthenticatedURL</code> class enables the use of the JDK <code>URL</code> class
@@ -70,6 +73,8 @@ public class AuthenticatedURL {
     public static final String AUTH_COOKIE = "alfredo.auth";
 
     private static final String AUTH_COOKIE_EQ = AUTH_COOKIE + "=";
+    
+    private SSLSocketFactory sslSf;
 
     /**
      * Client side authentication token.
@@ -180,8 +185,10 @@ public class AuthenticatedURL {
      */
     public AuthenticatedURL() {
         this(null);
+        sslSf = null;
     }
 
+    
     /**
      * Creates an <code>AuthenticatedURL</code>.
      *
@@ -195,6 +202,19 @@ public class AuthenticatedURL {
         catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+    }
+ 
+    /**
+     * Creates an <code>AuthenticatedURL</code>.
+     *
+     * @param authenticator the {@link Authenticator} instance to use, if <code>null</code> a {@link
+     * KerberosAuthenticator} is used.
+     * 
+     * @Param sslSf is the SSLSocketFactory
+     */
+    public AuthenticatedURL(Authenticator authenticator, SSLSocketFactory sslSf) {
+        this(authenticator);
+        this.sslSf = sslSf;
     }
     
     /**
@@ -211,6 +231,20 @@ public class AuthenticatedURL {
     }
     
     /**
+     * Creates an <code>AuthenticatedURL</code>.
+     *
+     * @param keytab is the kerberos keytab file used for authentication
+     * 
+     * @param principal is the kerberos principal used for authentication 
+     * 
+     * @Param sslSf is the SSLSocketFactory
+     */
+    public AuthenticatedURL(String keytab, String userPrincipal, SSLSocketFactory sslSf) {
+        this(null, sslSf);
+        ((KerberosAuthenticator) authenticator).setUserPrincipal(userPrincipal);
+        ((KerberosAuthenticator) authenticator).setKeytab(keytab);
+    }
+    /**
      * Returns an authenticated <code>HttpURLConnection</code>.
      *
      * @param url the URL to connect to. Only HTTP/S URLs are supported.
@@ -225,14 +259,23 @@ public class AuthenticatedURL {
         if (url == null) {
             throw new IllegalArgumentException("url cannot be NULL");
         }
-        if (!url.getProtocol().equalsIgnoreCase("http") && !url.getProtocol().equalsIgnoreCase("https")) {
+        if (!"http".equalsIgnoreCase(url.getProtocol()) && !"https".equalsIgnoreCase(url.getProtocol())) {
             throw new IllegalArgumentException("url must be for a HTTP or HTTPS resource");
         }
         if (token == null) {
             throw new IllegalArgumentException("token cannot be NULL");
         }
-        authenticator.authenticate(url, token);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        
+        authenticator.authenticate(url, token, sslSf);
+        HttpURLConnection conn;
+        if ("https".equalsIgnoreCase(url.getProtocol()))
+        {
+            conn = (HttpsURLConnection) url.openConnection();
+            if (sslSf != null)
+                ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+        }
+        else
+            conn = (HttpsURLConnection) url.openConnection();
         injectToken(conn, token);
         return conn;
     }
