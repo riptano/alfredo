@@ -21,6 +21,7 @@ package com.cloudera.alfredo.client;
 import java.io.IOException;
 import java.net.URL;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSocketFactory;
 
 /**
@@ -40,6 +41,6 @@ public interface Authenticator {
      * @throws IOException if an IO error occurred.
      * @throws AuthenticationException if an authentication error occurred.
      */
-    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf) throws IOException, AuthenticationException;
+    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier) throws IOException, AuthenticationException;
 
 }

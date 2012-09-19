@@ -31,6 +31,8 @@ import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -154,16 +156,16 @@ public class KerberosAuthenticator implements Authenticator {
      * @throws AuthenticationException if an authentication error occurred.
      */
     @Override
-    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf)
+    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier)
             throws IOException, AuthenticationException {
         if (!token.isSet()) {
             this.url = url;
             base64 = new Base64(0);
-            if ("https".equalsIgnoreCase(url.getProtocol()))
+            if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
             {
                 conn = (HttpsURLConnection) url.openConnection();
-                if (sslSf != null)
-                    ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+                ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+                ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
             }
             else
             {
@@ -176,7 +178,7 @@ public class KerberosAuthenticator implements Authenticator {
                 doSpnegoSequence(token);
             }
             else {
-                getFallBackAuthenticator().authenticate(url, token, sslSf);
+                getFallBackAuthenticator().authenticate(url, token, sslSf, hostNameVerifier);
             }
         }
     }

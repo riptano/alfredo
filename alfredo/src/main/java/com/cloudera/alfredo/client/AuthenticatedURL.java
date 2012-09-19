@@ -21,6 +21,8 @@ import com.cloudera.alfredo.server.AuthenticationFilter;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -75,6 +77,8 @@ public class AuthenticatedURL {
     private static final String AUTH_COOKIE_EQ = AUTH_COOKIE + "=";
     
     private SSLSocketFactory sslSf;
+    
+    private HostnameVerifier hostNameVerifier;
 
     /**
      * Client side authentication token.
@@ -185,7 +189,6 @@ public class AuthenticatedURL {
      */
     public AuthenticatedURL() {
         this(null);
-        sslSf = null;
     }
 
     
@@ -202,6 +205,8 @@ public class AuthenticatedURL {
         catch (Exception ex) {
             throw new RuntimeException(ex);
         }
+        sslSf = null;
+        hostNameVerifier = null;
     }
  
     /**
@@ -212,9 +217,10 @@ public class AuthenticatedURL {
      * 
      * @Param sslSf is the SSLSocketFactory
      */
-    public AuthenticatedURL(Authenticator authenticator, SSLSocketFactory sslSf) {
+    public AuthenticatedURL(Authenticator authenticator, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier) {
         this(authenticator);
         this.sslSf = sslSf;
+        this.hostNameVerifier = hostNameVerifier;
     }
     
     /**
@@ -239,8 +245,8 @@ public class AuthenticatedURL {
      * 
      * @Param sslSf is the SSLSocketFactory
      */
-    public AuthenticatedURL(String keytab, String userPrincipal, SSLSocketFactory sslSf) {
-        this(null, sslSf);
+    public AuthenticatedURL(String keytab, String userPrincipal, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier) {
+        this(null, sslSf, hostNameVerifier);
         ((KerberosAuthenticator) authenticator).setUserPrincipal(userPrincipal);
         ((KerberosAuthenticator) authenticator).setKeytab(keytab);
     }
@@ -266,13 +272,13 @@ public class AuthenticatedURL {
             throw new IllegalArgumentException("token cannot be NULL");
         }
         
-        authenticator.authenticate(url, token, sslSf);
+        authenticator.authenticate(url, token, sslSf, hostNameVerifier);
         HttpURLConnection conn;
-        if ("https".equalsIgnoreCase(url.getProtocol()))
+        if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
         {
             conn = (HttpsURLConnection) url.openConnection();
-            if (sslSf != null)
-                ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+            ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+            ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
         }
         else
             conn = (HttpsURLConnection) url.openConnection();
