@@ -196,7 +196,20 @@ public class AuthenticatedURL {
             throw new RuntimeException(ex);
         }
     }
-
+    
+    /**
+     * Creates an <code>AuthenticatedURL</code>.
+     *
+     * @param keytab is the kerberos keytab file used for authentication
+     * 
+     * @param principal is the kerberos principal used for authentication 
+     */
+    public AuthenticatedURL(String keytab, String userPrincipal) {
+        this(null);
+        ((KerberosAuthenticator) authenticator).setUserPrincipal(userPrincipal);
+        ((KerberosAuthenticator) authenticator).setKeytab(keytab);
+    }
+    
     /**
      * Returns an authenticated <code>HttpURLConnection</code>.
      *
@@ -253,7 +266,7 @@ public class AuthenticatedURL {
      * @throws AuthenticationException if an authentication exception occurred.
      */
     public static void extractToken(HttpURLConnection conn, Token token) throws IOException, AuthenticationException {
-        if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+        if (conn.getResponseCode() == HttpURLConnection.HTTP_OK  || conn.getResponseCode() == HttpURLConnection.HTTP_BAD_REQUEST) {
             Map<String, List<String>> headers = conn.getHeaderFields();
             List<String> cookies = headers.get("Set-Cookie");
             if (cookies != null) {
@@ -273,7 +286,7 @@ public class AuthenticatedURL {
         }
         else {
             throw new AuthenticationException("Authentication failed, status: " + conn.getResponseCode() +
-                                              ", message: " + conn.getResponseMessage());
+                                              ", message: " + conn.getResponseMessage(), AuthenticationException.AuthenticationExceptionCode.AUTHENTICATION_FAILED_HTTP_RESP_CODE);
         }
     }
 
