@@ -21,6 +21,10 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
+
 /**
  * The <code>PseudoAuthenticator</code> implementation provides an authentication equivalent to Hadoop
  * Simple authentication, it trust the value of the 'user.name' Java System property.
@@ -54,12 +58,24 @@ public class PseudoAuthenticator implements Authenticator {
      * @throws AuthenticationException if an authentication error occurred.
      */
     @Override
-    public void authenticate(URL url, AuthenticatedURL.Token token) throws IOException, AuthenticationException {
+    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier) 
+            throws IOException, AuthenticationException {
         String strUrl = url.toString();
         String paramSeparator = (strUrl.contains("?")) ? "&" : "?";
         strUrl += paramSeparator + USER_NAME_EQ + getUserName();
         url = new URL(strUrl);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HttpURLConnection conn;
+        if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
+        {
+            conn = (HttpsURLConnection) url.openConnection();
+            ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+            ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
+        }
+        else
+        {
+            conn = (HttpURLConnection) url.openConnection();
+        } 
+
         conn.setRequestMethod("OPTIONS");
         conn.connect();
         AuthenticatedURL.extractToken(conn, token);
