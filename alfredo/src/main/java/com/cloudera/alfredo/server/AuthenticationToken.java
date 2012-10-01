@@ -185,7 +185,8 @@ public class AuthenticationToken implements Principal {
     public static AuthenticationToken parse(String tokenStr) throws AuthenticationException {
         Map<String, String> map = split(tokenStr);
         if (!map.keySet().equals(ATTRIBUTES)) {
-            throw new AuthenticationException("Invalid token string, missing attributes");
+            throw new AuthenticationException("Invalid token string, missing attributes",
+                    AuthenticationException.AuthenticationExceptionCode.INVALID_TOKEN_STRING);
         }
         long expires = Long.parseLong(map.get(EXPIRES));
         AuthenticationToken token = new AuthenticationToken(map.get(USER_NAME), map.get(PRINCIPAL), map.get(TYPE));
@@ -208,7 +209,8 @@ public class AuthenticationToken implements Principal {
             String part = st.nextToken();
             int separator = part.indexOf('=');
             if (separator == -1) {
-                throw new AuthenticationException("Invalid authentication token");
+                throw new AuthenticationException("Invalid authentication token",
+                        AuthenticationException.AuthenticationExceptionCode.INVALID_TOKEN);
             }
             String key = part.substring(0, separator);
             String value = part.substring(separator + 1);

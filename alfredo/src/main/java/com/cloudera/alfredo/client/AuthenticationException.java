@@ -23,12 +23,19 @@ package com.cloudera.alfredo.client;
 public class AuthenticationException extends Exception {
 
     /**
+     * 
+     */
+    private static final long serialVersionUID = -626133712701141278L;
+    
+    public AuthenticationExceptionCode errorCode;
+    /**
      * Creates an <code>AuthenticationException</code>.
      *
      * @param cause original exception.
      */
-    public AuthenticationException(Throwable cause) {
+    public AuthenticationException(Throwable cause, AuthenticationExceptionCode errorCode) {
         super(cause);
+        this.errorCode = errorCode;
     }
 
     /**
@@ -36,8 +43,9 @@ public class AuthenticationException extends Exception {
      *
      * @param msg exception message.
      */
-    public AuthenticationException(String msg) {
+    public AuthenticationException(String msg, AuthenticationExceptionCode errorCode) {
         super(msg);
+        this.errorCode = errorCode;
     }
 
     /**
@@ -46,7 +54,48 @@ public class AuthenticationException extends Exception {
      * @param msg exception message.
      * @param cause original exception.
      */
-    public AuthenticationException(String msg, Throwable cause) {
+    public AuthenticationException(String msg, Throwable cause, AuthenticationExceptionCode errorCode) {
         super(msg, cause);
+        this.errorCode = errorCode;
+    }
+    
+    public enum AuthenticationExceptionCode
+    {
+        TOKEN_EXPIRED                        (0, "AuthenticationToken expired"),
+        INVALID_TYPE                         (1, "Invalid AuthenticationToken type"),
+        INVALID_TOKEN                        (2, "Invalid authentication token"),
+        ANONYMOUS_DISALLOWED                 (3, "Anonymous requests are disallowed"),
+        TOKEN_SIGNER_EXCEPTION               (4, "Invalid signed token"),
+        INVALID_SPNEGO_SEQUENCE              (5, "Invalid SPNEGO sequence"),
+        AUTHENTICATION_FAILED_HTTP_RESP_CODE (6, "Authentication failed with http resp code"),
+        LOGIN_EXCEPTION                      (7, "Login exception"),
+        PRIVILEGED_ACTION_EXCEPTION          (8, "Privileged action exception"),
+        INVALID_TOKEN_STRING                 (9, "Invalid token string, missing attributes");
+
+        private final int code;
+        private final String description;
+
+        private AuthenticationExceptionCode(int code, String description)
+        {
+            this.code = code;
+            this.description = description;
+        }
+
+        public String getDescription()
+        {
+            return description;
+        }
+
+        public int getCode()
+        {
+            return code;
+        }
+
+        @Override
+        public String toString()
+        {
+           return code + ": " + description;
+        }
+
     }
 }
