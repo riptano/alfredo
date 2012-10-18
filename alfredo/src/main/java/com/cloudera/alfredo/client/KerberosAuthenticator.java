@@ -335,7 +335,7 @@ public class KerberosAuthenticator implements Authenticator {
                 AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
     }
 
-    public String getAuthHttpMethod() {
+    public static String getAuthHttpMethod() {
         return AUTH_HTTP_METHOD;
     }
 }
