@@ -321,7 +321,7 @@ public class KerberosAuthenticator implements Authenticator {
      */
     private byte[] readToken() throws IOException, AuthenticationException {
         int status = conn.getResponseCode();
-        if (status == HttpURLConnection.HTTP_OK || status == HttpURLConnection.HTTP_UNAUTHORIZED || status == HttpURLConnection.HTTP_BAD_REQUEST) {
+        if (status == HttpURLConnection.HTTP_OK || status == HttpURLConnection.HTTP_UNAUTHORIZED) {
             String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
             if (authHeader == null || !authHeader.trim().startsWith(NEGOTIATE)) {
                 throw new AuthenticationException("Invalid SPNEGO sequence, '" + WWW_AUTHENTICATE +
@@ -335,4 +335,7 @@ public class KerberosAuthenticator implements Authenticator {
                 AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
     }
 
+    public static String getAuthHttpMethod() {
+        return AUTH_HTTP_METHOD;
+    }
 }
