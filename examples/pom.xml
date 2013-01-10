@@ -64,6 +64,11 @@
             <artifactId>slf4j-log4j12</artifactId>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+    		<groupId>org.apache.httpcomponents</groupId>
+    		<artifactId>httpclient</artifactId>
+    		<version>4.2.2</version>
+      	</dependency>
     </dependencies>
 
     <build>
@@ -85,7 +90,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>com.cloudera.alfredo.examples.WhoClient</mainClass>
+                    <mainClass>com.cloudera.alfredo.examples.HttpWhoClient</mainClass>
                     <arguments>
                         <argument>${url}</argument>
                     </arguments>
