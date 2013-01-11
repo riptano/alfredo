@@ -101,36 +101,39 @@ public class KerberosAuthenticator implements Authenticator {
             }
         }
 
+        // OS Specific stuff, leave this as static final
         private static final AppConfigurationEntry OS_SPECIFIC_LOGIN =
                 new AppConfigurationEntry(OS_LOGIN_MODULE_NAME,
                                           AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
                                           new HashMap<String, String>());
-
-        private static final Map<String, String> USER_KERBEROS_OPTIONS = new HashMap<String, String>();
-
-        static {
-            USER_KERBEROS_OPTIONS.put("doNotPrompt", "true");
-            String ticketCache = System.getenv("KRB5CCNAME");
-            if (ticketCache != null) {
-                USER_KERBEROS_OPTIONS.put("ticketCache", ticketCache);
-            }
-        }
-
-        private static final AppConfigurationEntry USER_KERBEROS_LOGIN =
+        
+        // per user/login configuration, create a new set of options for every login
+        private final Map<String, String> userKerberosOptions = new HashMap<String, String>();
+        
+        private final AppConfigurationEntry userKerberosLogin =
                 new AppConfigurationEntry(Krb5LoginModule.class.getName(),
                                           AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL,
-                                          USER_KERBEROS_OPTIONS);
+                                          userKerberosOptions);
+        
+        private final AppConfigurationEntry[] userKerberosConf =
+                new AppConfigurationEntry[]{OS_SPECIFIC_LOGIN, userKerberosLogin};
 
-        private static final AppConfigurationEntry[] USER_KERBEROS_CONF =
-                new AppConfigurationEntry[]{OS_SPECIFIC_LOGIN, USER_KERBEROS_LOGIN};
-
-        @Override
-        public AppConfigurationEntry[] getAppConfigurationEntry(String appName) {
-            return USER_KERBEROS_CONF;
+        public void addUserKerberosOption(String name, String value) {
+            userKerberosOptions.put(name, value);
         }
         
-        public void addUserKerberosOption(String name, String value) {
-            USER_KERBEROS_OPTIONS.put(name, value);
+        @Override
+        public AppConfigurationEntry[] getAppConfigurationEntry(String appName) {
+            return userKerberosConf;
+        }
+        
+        KerberosConfiguration()
+        {
+            userKerberosOptions.put("doNotPrompt", "true");
+            String ticketCache = System.getenv("KRB5CCNAME");
+            if (ticketCache != null) {
+                userKerberosOptions.put("ticketCache", ticketCache);
+            }
         }
     }
 
