@@ -49,6 +49,8 @@ public class HttpWhoClient {
             AuthenticatedURL.Token token = new AuthenticatedURL.Token();
             URL url = method.getURI().toURL();
             token = new AuthenticatedURL().authenticateWithToken(url, token);
+            // if required, pass an SSLSocketFactory & HostnameVerifier to the constructor like so:
+            // new AuthenticatedURL(null, socketFactory, hostnameVerifier) - the null Authenticator will mean we use the default, Kerberos
             // or you can specify a keytab + principal rather than use whats in the ticket cache
             //token = new AuthenticatedURL("/path/to/test.keytab", "HTTP/localhost").authenticateWithToken(url, token);
             method.addHeader("Cookie", AuthenticatedURL.AUTH_COOKIE + "=" + token);

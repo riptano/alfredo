@@ -221,6 +221,8 @@ public class AuthenticatedURL {
         this(authenticator);
         this.sslSf = sslSf;
         this.hostNameVerifier = hostNameVerifier;
+        this.authenticator.setSslSocketFactory(sslSf);
+        this.authenticator.setHostnameVerifier(hostNameVerifier);
     }
     
     /**
@@ -287,7 +289,7 @@ public class AuthenticatedURL {
             throw new IllegalArgumentException("token cannot be NULL");
         }
         
-        authenticator.authenticate(url, token, sslSf, hostNameVerifier);
+        authenticator.authenticate(url, token);
         return token;
     }
 
