@@ -221,6 +221,8 @@ public class AuthenticatedURL {
         this(authenticator);
         this.sslSf = sslSf;
         this.hostNameVerifier = hostNameVerifier;
+        this.authenticator.setSslSocketFactory(sslSf);
+        this.authenticator.setHostnameVerifier(hostNameVerifier);
     }
     
     /**
@@ -262,7 +264,22 @@ public class AuthenticatedURL {
      * @throws AuthenticationException if an authentication exception occurred.
      */
     public HttpURLConnection openConnection(URL url, Token token) throws IOException, AuthenticationException {
-        if (url == null) {
+        token = authenticateWithToken(url, token);
+        HttpURLConnection conn;
+        if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
+        {
+            conn = (HttpsURLConnection) url.openConnection();
+            ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
+            ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
+        }
+        else
+            conn = (HttpURLConnection) url.openConnection();
+        injectToken(conn, token);
+        return conn;
+    }
+    
+    public Token authenticateWithToken(URL url, Token token) throws IOException, AuthenticationException {
+    	if (url == null) {
             throw new IllegalArgumentException("url cannot be NULL");
         }
         if (!"http".equalsIgnoreCase(url.getProtocol()) && !"https".equalsIgnoreCase(url.getProtocol())) {
@@ -272,18 +289,8 @@ public class AuthenticatedURL {
             throw new IllegalArgumentException("token cannot be NULL");
         }
         
-        authenticator.authenticate(url, token, sslSf, hostNameVerifier);
-        HttpURLConnection conn;
-        if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
-        {
-            conn = (HttpsURLConnection) url.openConnection();
-            ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
-            ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
-        }
-        else
-            conn = (HttpsURLConnection) url.openConnection();
-        injectToken(conn, token);
-        return conn;
+        authenticator.authenticate(url, token);
+        return token;
     }
 
     /**

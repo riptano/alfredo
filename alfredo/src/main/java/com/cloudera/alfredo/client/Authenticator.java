@@ -37,10 +37,22 @@ public interface Authenticator {
      *
      * @param url the URl to authenticate against.
      * @param token the authencation token being used for the user.
-     * @param sslSF the SSLSocketFactory
      * @throws IOException if an IO error occurred.
      * @throws AuthenticationException if an authentication error occurred.
      */
-    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier) throws IOException, AuthenticationException;
+    public void authenticate(URL url, AuthenticatedURL.Token token) throws IOException, AuthenticationException;
 
+    
+    /**
+     * Setter for optional SSLSocketFactory
+     * @param socketFactory, if not set implementations should use system defaults
+     */
+    public void setSslSocketFactory(SSLSocketFactory socketFactory);
+
+    /**
+     * Setter for optional HostnameVerifier
+     * @param hostVerifier, if not set implementations should use system defaults
+     */
+    public void setHostnameVerifier(HostnameVerifier hostVerifier);
+    
 }

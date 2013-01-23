@@ -31,6 +31,7 @@ import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URLConnection;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -101,36 +102,39 @@ public class KerberosAuthenticator implements Authenticator {
             }
         }
 
+        // OS Specific stuff, leave this as static final
         private static final AppConfigurationEntry OS_SPECIFIC_LOGIN =
                 new AppConfigurationEntry(OS_LOGIN_MODULE_NAME,
                                           AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
                                           new HashMap<String, String>());
-
-        private static final Map<String, String> USER_KERBEROS_OPTIONS = new HashMap<String, String>();
-
-        static {
-            USER_KERBEROS_OPTIONS.put("doNotPrompt", "true");
-            String ticketCache = System.getenv("KRB5CCNAME");
-            if (ticketCache != null) {
-                USER_KERBEROS_OPTIONS.put("ticketCache", ticketCache);
-            }
-        }
-
-        private static final AppConfigurationEntry USER_KERBEROS_LOGIN =
+        
+        // per user/login configuration, create a new set of options for every login
+        private final Map<String, String> userKerberosOptions = new HashMap<String, String>();
+        
+        private final AppConfigurationEntry userKerberosLogin =
                 new AppConfigurationEntry(Krb5LoginModule.class.getName(),
                                           AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL,
-                                          USER_KERBEROS_OPTIONS);
+                                          userKerberosOptions);
+        
+        private final AppConfigurationEntry[] userKerberosConf =
+                new AppConfigurationEntry[]{OS_SPECIFIC_LOGIN, userKerberosLogin};
 
-        private static final AppConfigurationEntry[] USER_KERBEROS_CONF =
-                new AppConfigurationEntry[]{OS_SPECIFIC_LOGIN, USER_KERBEROS_LOGIN};
-
-        @Override
-        public AppConfigurationEntry[] getAppConfigurationEntry(String appName) {
-            return USER_KERBEROS_CONF;
+        public void addUserKerberosOption(String name, String value) {
+            userKerberosOptions.put(name, value);
         }
         
-        public void addUserKerberosOption(String name, String value) {
-            USER_KERBEROS_OPTIONS.put(name, value);
+        @Override
+        public AppConfigurationEntry[] getAppConfigurationEntry(String appName) {
+            return userKerberosConf;
+        }
+        
+        KerberosConfiguration()
+        {
+            userKerberosOptions.put("doNotPrompt", "true");
+            String ticketCache = System.getenv("KRB5CCNAME");
+            if (ticketCache != null) {
+                userKerberosOptions.put("ticketCache", ticketCache);
+            }
         }
     }
 
@@ -141,7 +145,21 @@ public class KerberosAuthenticator implements Authenticator {
     private URL url;
     private HttpURLConnection conn;
     private Base64 base64;
+    private SSLSocketFactory sslSocketFactory = HttpsURLConnection.getDefaultSSLSocketFactory();
+    private HostnameVerifier hostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
 
+    @Override
+    public void setSslSocketFactory(SSLSocketFactory factory)
+    {
+        this.sslSocketFactory = factory;
+    }
+    
+    @Override
+    public void setHostnameVerifier(HostnameVerifier verifier)
+    {
+        this.hostnameVerifier = verifier;
+    }
+    
     /**
      * Performs SPNEGO authentication against the specified URL.
      * <p/>
@@ -156,31 +174,33 @@ public class KerberosAuthenticator implements Authenticator {
      * @throws AuthenticationException if an authentication error occurred.
      */
     @Override
-    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier)
+    public void authenticate(URL url, AuthenticatedURL.Token token)
             throws IOException, AuthenticationException {
         if (!token.isSet()) {
             this.url = url;
             base64 = new Base64(0);
-            if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
-            {
-                conn = (HttpsURLConnection) url.openConnection();
-                ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
-                ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
-            }
-            else
-            {
-                conn = (HttpURLConnection) url.openConnection();
-            }            
-            
+
+            conn = openConnection(url);
             conn.setRequestMethod(AUTH_HTTP_METHOD);
             conn.connect();
             if (isNegotiate()) {
                 doSpnegoSequence(token);
             }
             else {
-                getFallBackAuthenticator().authenticate(url, token, sslSf, hostNameVerifier);
+                getFallBackAuthenticator().authenticate(url, token);
             }
         }
+    }
+    
+    private HttpURLConnection openConnection(URL url) throws IOException
+    {
+        URLConnection cxn = url.openConnection();
+        if (cxn instanceof HttpsURLConnection)
+        {
+            ((HttpsURLConnection) cxn).setSSLSocketFactory(sslSocketFactory);
+            ((HttpsURLConnection) cxn).setHostnameVerifier(hostnameVerifier);
+        }
+        return (HttpURLConnection)cxn;
     }
 
     /**
@@ -191,7 +211,10 @@ public class KerberosAuthenticator implements Authenticator {
      * @return the fallback {@link Authenticator}.
      */
     protected Authenticator getFallBackAuthenticator() {
-        return new PseudoAuthenticator();
+        Authenticator fallback = new PseudoAuthenticator();
+        fallback.setSslSocketFactory(sslSocketFactory);
+        fallback.setHostnameVerifier(hostnameVerifier);
+        return fallback;
     }
 
     public void setKeytab(String keytab)
@@ -310,7 +333,7 @@ public class KerberosAuthenticator implements Authenticator {
      */
     private void sendToken(byte[] outToken) throws IOException, AuthenticationException {
         String token = base64.encodeToString(outToken);
-        conn = (HttpURLConnection) url.openConnection();
+        conn = (HttpURLConnection) openConnection(url);
         conn.setRequestMethod(AUTH_HTTP_METHOD);
         conn.setRequestProperty(AUTHORIZATION, NEGOTIATE + " " + token);
         conn.connect();

@@ -25,6 +25,8 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
 
+import com.cloudera.alfredo.client.AuthenticatedURL.Token;
+
 /**
  * The <code>PseudoAuthenticator</code> implementation provides an authentication equivalent to Hadoop
  * Simple authentication, it trust the value of the 'user.name' Java System property.
@@ -40,6 +42,9 @@ public class PseudoAuthenticator implements Authenticator {
     public static final String USER_NAME = "user.name";
 
     private static final String USER_NAME_EQ = USER_NAME + "=";
+    
+    private SSLSocketFactory sslSocketFactory = HttpsURLConnection.getDefaultSSLSocketFactory();
+    private HostnameVerifier hostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
 
     /**
      * Performs simple authentication against the specified URL.
@@ -58,18 +63,18 @@ public class PseudoAuthenticator implements Authenticator {
      * @throws AuthenticationException if an authentication error occurred.
      */
     @Override
-    public void authenticate(URL url, AuthenticatedURL.Token token, SSLSocketFactory sslSf, HostnameVerifier hostNameVerifier) 
+    public void authenticate(URL url, AuthenticatedURL.Token token) 
             throws IOException, AuthenticationException {
         String strUrl = url.toString();
         String paramSeparator = (strUrl.contains("?")) ? "&" : "?";
         strUrl += paramSeparator + USER_NAME_EQ + getUserName();
         url = new URL(strUrl);
         HttpURLConnection conn;
-        if ("https".equalsIgnoreCase(url.getProtocol()) && sslSf != null)
+        if ("https".equalsIgnoreCase(url.getProtocol()))
         {
             conn = (HttpsURLConnection) url.openConnection();
-            ((HttpsURLConnection) conn).setSSLSocketFactory(sslSf);
-            ((HttpsURLConnection) conn).setHostnameVerifier(hostNameVerifier);
+            ((HttpsURLConnection) conn).setSSLSocketFactory(sslSocketFactory);
+            ((HttpsURLConnection) conn).setHostnameVerifier(hostnameVerifier);
         }
         else
         {
@@ -90,5 +95,17 @@ public class PseudoAuthenticator implements Authenticator {
      */
     protected String getUserName() {
         return System.getProperty("user.name");
+    }
+
+    @Override
+    public void setSslSocketFactory(SSLSocketFactory socketFactory)
+    {
+        sslSocketFactory = socketFactory;
+    }
+
+    @Override
+    public void setHostnameVerifier(HostnameVerifier hostVerifier)
+    {
+        hostnameVerifier = hostVerifier;
     }
 }
