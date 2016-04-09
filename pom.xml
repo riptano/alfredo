@@ -45,12 +45,12 @@
     <distributionManagement>
         <repository>
             <id>datastax-release</id>
-            <url>http://mvn.riptano.com/content/repositories/releases</url>
+            <url>http://datastax.artifactoryonline.com/datastax/datastax-releases-local</url>
             <name>DataStax Releases Repository</name>
         </repository>
         <snapshotRepository>
             <id>datastax-snapshot</id>
-            <url>http://mvn.riptano.com/content/repositories/snapshots</url>
+            <url>http://datastax.artifactoryonline.com/datastax/datastax-snapshots-local</url>
             <name>DataStax Snapshots Repository</name>
         </snapshotRepository>
     </distributionManagement>
@@ -291,4 +291,3 @@
     </build>
 
 </project>
-

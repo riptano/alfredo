@@ -71,19 +71,19 @@ public class KerberosAuthenticator implements Authenticator {
     public static String NEGOTIATE = "Negotiate";
 
     private static final String AUTH_HTTP_METHOD = "OPTIONS";
-    
+
     /**
      * keytab file is used for authentication
      */
     private String keytab;
-    
+
     /**
      * kerberos user principal is used for authentication
      */
     private String userPrincipal;
-    
+
     private boolean useKeytab = false;
-    
+
     /*
      * Defines the Kerberos configuration that will be used to obtain the kerberos principal from the
      * Kerberos cache.
@@ -107,27 +107,27 @@ public class KerberosAuthenticator implements Authenticator {
                 new AppConfigurationEntry(OS_LOGIN_MODULE_NAME,
                                           AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
                                           new HashMap<String, String>());
-        
+
         // per user/login configuration, create a new set of options for every login
         private final Map<String, String> userKerberosOptions = new HashMap<String, String>();
-        
+
         private final AppConfigurationEntry userKerberosLogin =
                 new AppConfigurationEntry(Krb5LoginModule.class.getName(),
                                           AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL,
                                           userKerberosOptions);
-        
+
         private final AppConfigurationEntry[] userKerberosConf =
                 new AppConfigurationEntry[]{OS_SPECIFIC_LOGIN, userKerberosLogin};
 
         public void addUserKerberosOption(String name, String value) {
             userKerberosOptions.put(name, value);
         }
-        
+
         @Override
         public AppConfigurationEntry[] getAppConfigurationEntry(String appName) {
             return userKerberosConf;
         }
-        
+
         KerberosConfiguration()
         {
             userKerberosOptions.put("doNotPrompt", "true");
@@ -153,13 +153,13 @@ public class KerberosAuthenticator implements Authenticator {
     {
         this.sslSocketFactory = factory;
     }
-    
+
     @Override
     public void setHostnameVerifier(HostnameVerifier verifier)
     {
         this.hostnameVerifier = verifier;
     }
-    
+
     /**
      * Performs SPNEGO authentication against the specified URL.
      * <p/>
@@ -191,7 +191,7 @@ public class KerberosAuthenticator implements Authenticator {
             }
         }
     }
-    
+
     private HttpURLConnection openConnection(URL url) throws IOException
     {
         URLConnection cxn = url.openConnection();
@@ -220,7 +220,7 @@ public class KerberosAuthenticator implements Authenticator {
     public void setKeytab(String keytab)
     {
         this.keytab = keytab;
-        
+
         if (keytab != null)
             useKeytab = true;
     }
@@ -229,7 +229,7 @@ public class KerberosAuthenticator implements Authenticator {
     {
         this.userPrincipal = userPrincipal;
     }
-    
+
     /*
      * Indicates if the response is starting a SPNEGO negotiation.
      */
@@ -254,16 +254,16 @@ public class KerberosAuthenticator implements Authenticator {
         try {
             AccessControlContext context = AccessController.getContext();
             Subject subject = Subject.getSubject(context);
-            if (subject == null) {
+            if ((subject == null) || (subject.getPrivateCredentials().size() == 0)) {
                 subject = new Subject();
                 LoginContext login = null;
                 KerberosConfiguration krbConfiguration = new KerberosConfiguration();
-                
+
                 // use keytab
                 if (useKeytab)
-                {                   
+                {
                     krbConfiguration.addUserKerberosOption("useKeyTab", "true");
-                    krbConfiguration.addUserKerberosOption("storeKey", "true");                    
+                    krbConfiguration.addUserKerberosOption("storeKey", "true");
                     krbConfiguration.addUserKerberosOption("principal", userPrincipal);
                     krbConfiguration.addUserKerberosOption("keyTab", keytab);
                     login = new LoginContext(userPrincipal, subject, null, krbConfiguration);
@@ -348,13 +348,13 @@ public class KerberosAuthenticator implements Authenticator {
             String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
             if (authHeader == null || !authHeader.trim().startsWith(NEGOTIATE)) {
                 throw new AuthenticationException("Invalid SPNEGO sequence, '" + WWW_AUTHENTICATE +
-                                                  "' header incorrect: " + authHeader, 
+                                                  "' header incorrect: " + authHeader,
                                                   AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
             }
             String negotiation = authHeader.trim().substring((NEGOTIATE + " ").length()).trim();
             return base64.decode(negotiation);
         }
-        throw new AuthenticationException("Invalid SPNEGO sequence, status code: " + status, 
+        throw new AuthenticationException("Invalid SPNEGO sequence, status code: " + status,
                 AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
     }
 
