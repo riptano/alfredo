@@ -69,6 +69,7 @@ public class KerberosAuthenticator implements Authenticator {
      * HTTP header prefix used by the SPNEGO client/server endpoints during an authentication sequence.
      */
     public static String NEGOTIATE = "Negotiate";
+    private static String COMMA_PREFIXED_NEGOTIATE = ", " + NEGOTIATE;
 
     private static final String AUTH_HTTP_METHOD = "OPTIONS";
 
@@ -231,13 +232,22 @@ public class KerberosAuthenticator implements Authenticator {
     }
 
     /*
-     * Indicates if the response is starting a SPNEGO negotiation.
+     * Indicates if the response contains a SPNEGO negotiation challenge.
+     *
+     * RFC-7235 states that WWW-Authenticate header may contain more than one challenge,
+     * see https://tools.ietf.org/html/rfc7235#page-7. Challenges must be separated by ", ".
+     *
+     * Visible for testing
      */
     private boolean isNegotiate() throws IOException {
         boolean negotiate = false;
         if (conn.getResponseCode() == HttpURLConnection.HTTP_UNAUTHORIZED) {
             String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
-            negotiate = authHeader != null && authHeader.trim().startsWith(NEGOTIATE);
+            if (authHeader != null) {
+                String trimmedAuthHeader = authHeader.trim();
+                negotiate = trimmedAuthHeader.startsWith(NEGOTIATE) ||
+                        trimmedAuthHeader.contains(COMMA_PREFIXED_NEGOTIATE);
+            }
         }
         return negotiate;
     }
