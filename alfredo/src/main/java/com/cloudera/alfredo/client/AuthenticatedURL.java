@@ -25,6 +25,7 @@ import java.net.HttpURLConnection;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import java.net.URL;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -323,8 +324,7 @@ public class AuthenticatedURL {
      */
     public static void extractToken(HttpURLConnection conn, Token token) throws IOException, AuthenticationException {
         if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-            Map<String, List<String>> headers = conn.getHeaderFields();
-            List<String> cookies = headers.get("Set-Cookie");
+            List<String> cookies = readHeaderField(conn, "Set-Cookie");
             if (cookies != null) {
                 for (String cookie : cookies) {
                     if (cookie.startsWith(AUTH_COOKIE_EQ)) {
@@ -346,4 +346,21 @@ public class AuthenticatedURL {
         }
     }
 
+    private static List<String> safeAddAll(List<String> target, List<String> values) {
+        if (values != null) {
+            target.addAll(values);
+        }
+        return target;
+    }
+
+    public static List<String> readHeaderField(HttpURLConnection connection, String header) {
+        Map<String, List<String>> headerFields = connection.getHeaderFields();
+        List<String> headerValues = new LinkedList<String>();
+        for (Map.Entry<String, List<String>> h : headerFields.entrySet()) {
+            if (header.equalsIgnoreCase(h.getKey())) {
+                safeAddAll(headerValues, h.getValue());
+            }
+        }
+        return headerValues;
+    }
 }

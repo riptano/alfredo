@@ -17,14 +17,12 @@
  */
 package com.cloudera.alfredo.client;
 
+import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.mockito.Mockito;
 
 import java.net.HttpURLConnection;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  *
@@ -116,6 +114,22 @@ public class TestAuthenticatedURL extends TestCase {
         catch (Exception ex) {
             fail();
         }
+    }
+
+    public void testCaseInsensitiveHeaderExtraction() {
+        HttpURLConnection conn = Mockito.mock(HttpURLConnection.class);
+
+        Map<String, List<String>> headers = new HashMap<String, List<String>>();
+        headers.put("header", Lists.newArrayList("value 1"));
+        headers.put("HEADER", Lists.newArrayList("value 2"));
+        headers.put("hEadEr", Lists.newArrayList("value 3"));
+        headers.put(null, Lists.newArrayList("value X"));
+
+        Mockito.when(conn.getHeaderFields()).thenReturn(headers);
+
+        List<String> values = AuthenticatedURL.readHeaderField(conn, "headeR");
+
+        assertEquals(values, Lists.newArrayList("value 1", "value 2", "value 3"));
     }
 
 }
