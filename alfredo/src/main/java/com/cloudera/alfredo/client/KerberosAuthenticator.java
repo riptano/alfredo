@@ -43,7 +43,11 @@ import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+
+import static com.cloudera.alfredo.client.AuthenticatedURL.readHeaderField;
 
 /**
  * The <code>KerberosAuthenticator</code> implements the Kerberos SPNEGO authentication sequence.
@@ -61,6 +65,11 @@ public class KerberosAuthenticator implements Authenticator {
     public static String WWW_AUTHENTICATE = "WWW-Authenticate";
 
     /**
+     * HTTP header used by the SPNEGO server endpoint during an authentication sequence.
+     */
+    public static String CONTENT_LENGTH = "Content-Length";
+
+    /**
      * HTTP header used by the SPNEGO client endpoint during an authentication sequence.
      */
     public static String AUTHORIZATION = "Authorization";
@@ -69,6 +78,7 @@ public class KerberosAuthenticator implements Authenticator {
      * HTTP header prefix used by the SPNEGO client/server endpoints during an authentication sequence.
      */
     public static String NEGOTIATE = "Negotiate";
+    private static String COMMA_PREFIXED_NEGOTIATE = ", " + NEGOTIATE;
 
     private static final String AUTH_HTTP_METHOD = "OPTIONS";
 
@@ -231,15 +241,24 @@ public class KerberosAuthenticator implements Authenticator {
     }
 
     /*
-     * Indicates if the response is starting a SPNEGO negotiation.
+     * Indicates if the response contains a SPNEGO negotiation challenge.
+     *
+     * RFC-7235 states that WWW-Authenticate header may contain more than one challenge,
+     * see https://tools.ietf.org/html/rfc7235#page-7. Challenges must be separated by ", ".
+     *
      */
     private boolean isNegotiate() throws IOException {
-        boolean negotiate = false;
         if (conn.getResponseCode() == HttpURLConnection.HTTP_UNAUTHORIZED) {
-            String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
-            negotiate = authHeader != null && authHeader.trim().startsWith(NEGOTIATE);
+            List<String> headerValues = readHeaderField(conn, WWW_AUTHENTICATE);
+            for (String value : headerValues) {
+                String trimmedAuthHeader = (value == null) ? "" : value.trim();
+                if (trimmedAuthHeader.startsWith(NEGOTIATE) ||
+                        trimmedAuthHeader.contains(COMMA_PREFIXED_NEGOTIATE)) {
+                    return true;
+                }
+            }
         }
-        return negotiate;
+        return false;
     }
 
     /**
@@ -345,14 +364,18 @@ public class KerberosAuthenticator implements Authenticator {
     private byte[] readToken() throws IOException, AuthenticationException {
         int status = conn.getResponseCode();
         if (status == HttpURLConnection.HTTP_OK || status == HttpURLConnection.HTTP_UNAUTHORIZED) {
-            String authHeader = conn.getHeaderField(WWW_AUTHENTICATE);
-            if (authHeader == null || !authHeader.trim().startsWith(NEGOTIATE)) {
+            List<String> authHeaders = readHeaderField(conn, WWW_AUTHENTICATE);
+            if (authHeaders.isEmpty()) {
                 throw new AuthenticationException("Invalid SPNEGO sequence, '" + WWW_AUTHENTICATE +
-                                                  "' header incorrect: " + authHeader,
-                                                  AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
+                        "' header missing",
+                        AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);
             }
-            String negotiation = authHeader.trim().substring((NEGOTIATE + " ").length()).trim();
-            return base64.decode(negotiation);
+            for (String authHeader : authHeaders) {
+                if (authHeader != null && authHeader.trim().startsWith(NEGOTIATE)) {
+                    String negotiation = authHeader.trim().substring((NEGOTIATE + " ").length()).trim();
+                    return base64.decode(negotiation);
+                }
+            }
         }
         throw new AuthenticationException("Invalid SPNEGO sequence, status code: " + status,
                 AuthenticationException.AuthenticationExceptionCode.INVALID_SPNEGO_SEQUENCE);

@@ -272,8 +272,9 @@ public class KerberosAuthenticationHandler implements AuthenticationHandler {
                                 response.setHeader(KerberosAuthenticator.WWW_AUTHENTICATE,
                                                    KerberosAuthenticator.NEGOTIATE + " " + authenticate);
                             }
-                            if (!gssContext.isEstablished()) {
+                            if (!gssContext.isEstablished() || gssContext.getSrcName() == null) {
                                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                                response.setHeader(KerberosAuthenticator.CONTENT_LENGTH, "0");
                                 LOG.trace("SPNEGO in progress");
                             }
                             else {
